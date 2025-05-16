@@ -1,0 +1,57 @@
+cmake:
+  application:
+    configuration-dir: '/home/jonathan/zephyrproject/maze'
+    source-dir: '/home/jonathan/zephyrproject/maze'
+  board:
+    name: 'esp32s3_devkitc'
+    path:
+     - '/home/jonathan/zephyrproject/zephyr/boards/espressif/esp32s3_devkitc'
+    qualifiers: 'esp32s3/procpu'
+    revision: ''
+  devicetree:
+    bindings-dirs:
+     - '/home/jonathan/zephyrproject/zephyr/dts/bindings'
+    files:
+     - '/home/jonathan/zephyrproject/zephyr/boards/espressif/esp32s3_devkitc/esp32s3_devkitc_procpu.dts'
+    include-dirs:
+     - '/home/jonathan/zephyrproject/modules/hal/ambiq/dts'
+     - '/home/jonathan/zephyrproject/modules/hal/atmel/include'
+     - '/home/jonathan/zephyrproject/modules/hal/bouffalolab/include'
+     - '/home/jonathan/zephyrproject/modules/hal/bouffalolab/include/zephyr'
+     - '/home/jonathan/zephyrproject/modules/hal/gigadevice/include'
+     - '/home/jonathan/zephyrproject/modules/hal/microchip/include'
+     - '/home/jonathan/zephyrproject/modules/hal/microchip/dts'
+     - '/home/jonathan/zephyrproject/modules/hal/nuvoton/dts'
+     - '/home/jonathan/zephyrproject/modules/hal/nxp/dts'
+     - '/home/jonathan/zephyrproject/modules/hal/stm32/dts'
+     - '/home/jonathan/zephyrproject/zephyr/include'
+     - '/home/jonathan/zephyrproject/zephyr/include/zephyr'
+     - '/home/jonathan/zephyrproject/zephyr/dts/common'
+     - '/home/jonathan/zephyrproject/zephyr/dts/vendor'
+     - '/home/jonathan/zephyrproject/zephyr/dts/rx'
+     - '/home/jonathan/zephyrproject/zephyr/dts/x86'
+     - '/home/jonathan/zephyrproject/zephyr/dts/xtensa'
+     - '/home/jonathan/zephyrproject/zephyr/dts/sparc'
+     - '/home/jonathan/zephyrproject/zephyr/dts/riscv'
+     - '/home/jonathan/zephyrproject/zephyr/dts/posix'
+     - '/home/jonathan/zephyrproject/zephyr/dts/arm64'
+     - '/home/jonathan/zephyrproject/zephyr/dts/arm'
+     - '/home/jonathan/zephyrproject/zephyr/dts/arc'
+     - '/home/jonathan/zephyrproject/zephyr/dts'
+  kconfig:
+    files:
+     - '/home/jonathan/zephyrproject/zephyr/boards/espressif/esp32s3_devkitc/esp32s3_devkitc_procpu_defconfig'
+     - '/home/jonathan/zephyrproject/maze/prj.conf'
+    user-files:
+     - '/home/jonathan/zephyrproject/maze/prj.conf'
+  toolchain:
+    name: 'zephyr'
+    path: '/home/jonathan/zephyr-sdk-0.17.0'
+  zephyr:
+    version: '4.1.99'
+    zephyr-base: '/home/jonathan/zephyrproject/zephyr'
+version: '0.1.0'
+west:
+  command: '/usr/bin/west build -b esp32s3 --pristine'
+  topdir: '/home/jonathan/zephyrproject'
+  version: '1.3.0'

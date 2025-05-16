@@ -1,0 +1,37 @@
+west build --cmake-only --build-dir=/home/jonathan/zephyrproject/maze/build /home/jonathan/zephyrproject/maze -- -DCMAKE_MAKE_PROGRAM=/opt/clion/bin/ninja/linux/x64/ninja
+-- west build: generating a build system
+Loading Zephyr default modules (Zephyr base (cached)).
+-- Application: /home/jonathan/zephyrproject/maze
+-- CMake version: 4.0.1
+-- Cache files will be written to: /home/jonathan/.cache/zephyr
+-- Zephyr version: 4.1.99 (/home/jonathan/zephyrproject/zephyr)
+-- Found west (found suitable version "1.3.0", minimum required is "0.14.0")
+-- Board: esp32s3_devkitc, qualifiers: esp32s3/procpu
+-- Found host-tools: zephyr 0.17.0 (/home/jonathan/zephyr-sdk-0.17.0)
+-- Found toolchain: zephyr 0.17.0 (/home/jonathan/zephyr-sdk-0.17.0)
+-- Found BOARD.dts: /home/jonathan/zephyrproject/zephyr/boards/espressif/esp32s3_devkitc/esp32s3_devkitc_procpu.dts
+-- Generated zephyr.dts: /home/jonathan/zephyrproject/maze/build/zephyr/zephyr.dts
+-- Generated pickled edt: /home/jonathan/zephyrproject/maze/build/zephyr/edt.pickle
+-- Generated devicetree_generated.h: /home/jonathan/zephyrproject/maze/build/zephyr/include/generated/zephyr/devicetree_generated.h
+-- Including generated dts.cmake file: /home/jonathan/zephyrproject/maze/build/zephyr/dts.cmake
+Parsing /home/jonathan/zephyrproject/zephyr/Kconfig
+Loaded configuration '/home/jonathan/zephyrproject/zephyr/boards/espressif/esp32s3_devkitc/esp32s3_devkitc_procpu_defconfig'
+Merged configuration '/home/jonathan/zephyrproject/maze/prj.conf'
+Configuration saved to '/home/jonathan/zephyrproject/maze/build/zephyr/.config'
+Kconfig header saved to '/home/jonathan/zephyrproject/maze/build/zephyr/include/generated/zephyr/autoconf.h'
+-- Espressif HAL path: /home/jonathan/zephyrproject/modules/hal/espressif
+-- Use the esptool.py: /home/jonathan/zephyrproject/modules/hal/espressif/tools/esptool_py/esptool.py
+-- Image partition /soc/flash-controller@60002000/flash@0/partitions/partition@0
+CMake Warning at /home/jonathan/zephyrproject/zephyr/subsys/random/CMakeLists.txt:12 (message):
+
+
+      Warning: CONFIG_TIMER_RANDOM_GENERATOR and CONFIG_TEST_CSPRNG_GENERATOR are
+      not truly random generators. This capability is not secure and it is
+      provided for testing purposes only. Use it carefully.
+
+
+-- Using ccache: /usr/bin/ccache
+-- Found gen_kobject_list: /home/jonathan/zephyrproject/zephyr/scripts/build/gen_kobject_list.py
+-- Configuring done (4.0s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/jonathan/zephyrproject/maze/build

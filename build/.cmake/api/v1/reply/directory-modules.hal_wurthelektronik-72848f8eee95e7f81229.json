@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "modules/hal_wurthelektronik",
+		"source" : "/home/jonathan/zephyrproject/modules/hal/wurthelektronik"
+	}
+}

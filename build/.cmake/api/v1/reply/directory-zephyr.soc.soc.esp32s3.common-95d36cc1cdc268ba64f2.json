@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "zephyr/soc/soc/esp32s3/common",
+		"source" : "/home/jonathan/zephyrproject/zephyr/soc/espressif/common"
+	}
+}

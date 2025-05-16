@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "zephyr/lib/uuid",
+		"source" : "/home/jonathan/zephyrproject/zephyr/lib/uuid"
+	}
+}
