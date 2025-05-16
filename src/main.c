@@ -4,6 +4,7 @@
 
 #define MAZE_WIDTH  5
 #define MAZE_HEIGHT 5
+#define ACTION_COUNT 4
 #define STATE_COUNT (MAZE_WIDTH * MAZE_HEIGHT)
 #define STACK_SIZE 1024
 #define SENSOR_PRIORITY   3
@@ -28,7 +29,6 @@ typedef enum {
     MOVE_DOWN,
     MOVE_LEFT,
     MOVE_RIGHT,
-    ACTION_COUNT
 } action_t;
 
 //Simulates sensor data
@@ -97,7 +97,7 @@ void sensor_thread(void *a, void *b, void *c) {
         }
 
         k_msgq_put(&sensor_queue, &sensors, K_FOREVER);
-        k_msleep(100); // simulate sensor rate
+        k_msleep(100); //Simulate sensor rate
     }
 }
 
@@ -114,15 +114,23 @@ void ai_thread(void *a, void *b, void *c) {
     while (1) {
         k_msgq_get(&sensor_queue, &sensors, K_FOREVER);
 
-        // Choose random valid action for now
+        //Randomize actions and restart when at goal
         do {
             cmd.action = sys_rand32_get() % ACTION_COUNT;
 
             new_pos = agent_pos;
-            if (cmd.action == MOVE_UP)    new_pos.y--;
-            if (cmd.action == MOVE_DOWN)  new_pos.y++;
-            if (cmd.action == MOVE_LEFT)  new_pos.x--;
-            if (cmd.action == MOVE_RIGHT) new_pos.x++;
+            if (cmd.action == MOVE_UP) {
+                new_pos.y--;
+            }
+            if (cmd.action == MOVE_DOWN) {
+                new_pos.y++;
+            }
+            if (cmd.action == MOVE_LEFT) {
+                new_pos.x--;
+            }
+            if (cmd.action == MOVE_RIGHT) {
+                new_pos.x++;
+            }
         } while (
             new_pos.x < 0 || new_pos.x >= MAZE_WIDTH ||
             new_pos.y < 0 || new_pos.y >= MAZE_HEIGHT ||
@@ -138,11 +146,11 @@ void actuator_thread(void *a, void *b, void *c) {
     while (1) {
         k_msgq_get(&action_queue, &cmd, K_FOREVER);
 
-        if (cmd.action == MOVE_UP    && agent_pos.y > 0 && !maze[agent_pos.y - 1][agent_pos.x])
+        if (cmd.action == MOVE_UP && agent_pos.y > 0 && !maze[agent_pos.y - 1][agent_pos.x])
             agent_pos.y--;
-        if (cmd.action == MOVE_DOWN  && agent_pos.y < MAZE_HEIGHT - 1 && !maze[agent_pos.y + 1][agent_pos.x])
+        if (cmd.action == MOVE_DOWN && agent_pos.y < MAZE_HEIGHT - 1 && !maze[agent_pos.y + 1][agent_pos.x])
             agent_pos.y++;
-        if (cmd.action == MOVE_LEFT  && agent_pos.x > 0 && !maze[agent_pos.y][agent_pos.x - 1])
+        if (cmd.action == MOVE_LEFT && agent_pos.x > 0 && !maze[agent_pos.y][agent_pos.x - 1])
             agent_pos.x--;
         if (cmd.action == MOVE_RIGHT && agent_pos.x < MAZE_WIDTH - 1 && !maze[agent_pos.y][agent_pos.x + 1])
             agent_pos.x++;
