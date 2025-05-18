@@ -2,11 +2,11 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/random/random.h>
 
-#define MAZE_WIDTH  5
-#define MAZE_HEIGHT 5
+#define MAZE_WIDTH  25
+#define MAZE_HEIGHT 25
 #define ACTION_COUNT 4
 #define STATE_COUNT (MAZE_WIDTH * MAZE_HEIGHT)
-#define STACK_SIZE 1024
+#define STACK_SIZE 4096
 #define SENSOR_PRIORITY   2
 #define AI_PRIORITY       1
 #define ACTUATOR_PRIORITY 3
@@ -20,7 +20,7 @@ void ai_thread(void *a, void *b, void *c);
 void actuator_thread(void *a, void *b, void *c);
 
 K_THREAD_DEFINE(sensor_tid, STACK_SIZE, sensor_thread, NULL, NULL, NULL, SENSOR_PRIORITY, 0, 0);
-K_THREAD_DEFINE(ai_tid, STACK_SIZE, ai_thread,     NULL, NULL, NULL, AI_PRIORITY,     0, 0);
+K_THREAD_DEFINE(ai_tid, STACK_SIZE, ai_thread, NULL, NULL, NULL, AI_PRIORITY, 0, 0);
 K_THREAD_DEFINE(actuator_tid, STACK_SIZE, actuator_thread, NULL, NULL, NULL, ACTUATOR_PRIORITY, 0, 0);
 
 typedef struct {
@@ -48,20 +48,53 @@ typedef struct {
 } action_cmd_t;
 
 //Create 2D maze, start at (0,0) and goal is (5,5) 1 is walls 0 is open space
-static const uint8_t maze[MAZE_HEIGHT][MAZE_WIDTH] = {
-    {0, 1, 0, 0, 0},
-    {0, 1, 0, 1, 0},
-    {0, 0, 0, 1, 0},
-    {1, 1, 0, 1, 0},
-    {0, 0, 0, 0, 0}
-};
+static __attribute__((section(".ext_ram.bss")))
+uint8_t maze[MAZE_HEIGHT][MAZE_WIDTH];
 
 K_MSGQ_DEFINE(sensor_queue, sizeof(sensor_data_t), 5, 4);
 K_MSGQ_DEFINE(action_queue, sizeof(action_cmd_t), 5, 4);
 
-static position_t agent_pos = {0, 0};
-static const position_t goal_pos = {4, 4};
-float q_table[STATE_COUNT][ACTION_COUNT] = {0};
+static position_t agent_pos = {1, 1};
+static const position_t goal_pos = {MAZE_HEIGHT - 2, MAZE_WIDTH - 2};
+
+static __attribute__((section(".ext_ram.bss")))
+float q_table[STATE_COUNT][ACTION_COUNT];
+
+const int dirs[4][2] = {
+    { 0, -2}, // up
+    { 0,  2}, // down
+    {-2,  0}, // left
+    { 2,  0}  // right
+};
+
+void shuffle(int *array, int n) {
+    for (int i = n - 1; i > 0; i--) {
+        int j = sys_rand32_get() % (i + 1);
+        int temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+}
+
+void dfs_carve(int x, int y) {
+    maze[y][x] = 0;
+
+    int order[4] = {0, 1, 2, 3};
+    shuffle(order, 4);
+
+    for (int i = 0; i < 4; i++) {
+        int dx = dirs[order[i]][0];
+        int dy = dirs[order[i]][1];
+        int nx = x + dx;
+        int ny = y + dy;
+
+        if (nx > 0 && nx < MAZE_WIDTH - 1 && ny > 0 && ny < MAZE_HEIGHT - 1 &&
+            maze[ny][nx] == 1) {
+            maze[y + dy / 2][x + dx / 2] = 0; // knock down wall
+            dfs_carve(nx, ny);
+            }
+    }
+}
 
 //Simulates a sensor checking its 4 walls around it,
 //if it is on the boundary return a 1, simulating a physical boundary
@@ -201,9 +234,9 @@ void ai_thread(void *a, void *b, void *c) {
 
         k_msgq_put(&action_queue, &cmd, K_FOREVER);
 
-        if (agent_pos.x == MAZE_WIDTH - 1 && agent_pos.y == MAZE_HEIGHT - 1) {
-            agent_pos.x = 0;
-            agent_pos.y = 0;
+        if (agent_pos.x == MAZE_WIDTH - 2 && agent_pos.y == MAZE_HEIGHT - 2) {
+            agent_pos.x = 1;
+            agent_pos.y = 1;
         }
 
         k_msleep(100);
@@ -220,6 +253,9 @@ void actuator_thread(void *a, void *b, void *c) {
 
 int main(void)
 {
+    memset(maze, 1, sizeof(maze));
+    memset(q_table, 0, sizeof(q_table));
+    dfs_carve(1,1);
     printk("Maze AI starting...\n");
     return 0;
 }
