@@ -1,27 +1,22 @@
+#include <esp_heap_caps.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/random/random.h>
+#include "esp_psram.h"
+#include "zephyr/drivers/spi.h"
+#include "zephyr/multi_heap/shared_multi_heap.h"
 
-#define MAZE_WIDTH  25
-#define MAZE_HEIGHT 25
+#define MAZE_WIDTH  239
+#define MAZE_HEIGHT 339
 #define ACTION_COUNT 4
 #define STATE_COUNT (MAZE_WIDTH * MAZE_HEIGHT)
 #define STACK_SIZE 4096
-#define SENSOR_PRIORITY   2
-#define AI_PRIORITY       1
-#define ACTUATOR_PRIORITY 3
+#define SENSOR_PRIORITY   3
+#define AI_PRIORITY       2
+#define ACTUATOR_PRIORITY 4
 #define EPSILON 0.1f
 #define GAMMA 0.9f
 #define ALPHA 0.1f
-
-
-void sensor_thread(void *a, void *b, void *c);
-void ai_thread(void *a, void *b, void *c);
-void actuator_thread(void *a, void *b, void *c);
-
-K_THREAD_DEFINE(sensor_tid, STACK_SIZE, sensor_thread, NULL, NULL, NULL, SENSOR_PRIORITY, 0, 0);
-K_THREAD_DEFINE(ai_tid, STACK_SIZE, ai_thread, NULL, NULL, NULL, AI_PRIORITY, 0, 0);
-K_THREAD_DEFINE(actuator_tid, STACK_SIZE, actuator_thread, NULL, NULL, NULL, ACTUATOR_PRIORITY, 0, 0);
 
 typedef struct {
     int x;
@@ -35,6 +30,12 @@ typedef enum {
     MOVE_RIGHT,
 } action_t;
 
+const int dirs[4][2] = {
+    { 0, -2}, // up
+    { 0,  2}, // down
+    {-2,  0}, // left
+    { 2,  0}  // right
+};
 //Simulates sensor data
 typedef struct {
     bool wall_up;
@@ -47,25 +48,39 @@ typedef struct {
     action_t action;
 } action_cmd_t;
 
-//Create 2D maze, start at (0,0) and goal is (5,5) 1 is walls 0 is open space
 static __attribute__((section(".ext_ram.bss")))
 uint8_t maze[MAZE_HEIGHT][MAZE_WIDTH];
-
-K_MSGQ_DEFINE(sensor_queue, sizeof(sensor_data_t), 5, 4);
-K_MSGQ_DEFINE(action_queue, sizeof(action_cmd_t), 5, 4);
-
-static position_t agent_pos = {1, 1};
-static const position_t goal_pos = {MAZE_HEIGHT - 2, MAZE_WIDTH - 2};
 
 static __attribute__((section(".ext_ram.bss")))
 float q_table[STATE_COUNT][ACTION_COUNT];
 
-const int dirs[4][2] = {
-    { 0, -2}, // up
-    { 0,  2}, // down
-    {-2,  0}, // left
-    { 2,  0}  // right
-};
+static position_t agent_pos = {1, 1};
+static const position_t goal_pos = {MAZE_HEIGHT - 2, MAZE_WIDTH - 2};
+static position_t *stack = NULL;
+static int top = 0;
+struct k_sem maze_ready_sem;
+
+void sensor_thread(void *a, void *b, void *c);
+void ai_thread(void *a, void *b, void *c);
+void actuator_thread(void *a, void *b, void *c);
+
+K_THREAD_DEFINE(sensor_tid, STACK_SIZE, sensor_thread, NULL, NULL, NULL, SENSOR_PRIORITY, 0, 0);
+K_THREAD_DEFINE(ai_tid, STACK_SIZE, ai_thread, NULL, NULL, NULL, AI_PRIORITY, 0, 0);
+K_THREAD_DEFINE(actuator_tid, STACK_SIZE, actuator_thread, NULL, NULL, NULL, ACTUATOR_PRIORITY, 0, 0);
+K_MSGQ_DEFINE(sensor_queue, sizeof(sensor_data_t), 5, 4);
+K_MSGQ_DEFINE(action_queue, sizeof(action_cmd_t), 5, 4);
+
+void push(position_t c) {
+    stack[top++] = c;
+}
+
+position_t pop(void) {
+    return stack[--top];
+}
+
+bool stack_empty(void) {
+    return top == 0;
+}
 
 void shuffle(int *array, int n) {
     for (int i = n - 1; i > 0; i--) {
@@ -77,28 +92,50 @@ void shuffle(int *array, int n) {
 }
 
 void dfs_carve(int x, int y) {
+    stack = shared_multi_heap_aligned_alloc(SMH_REG_ATTR_EXTERNAL, 4, sizeof(position_t) * STATE_COUNT);
+    if (!stack) {
+        printk("Error: Memory not allocated for stack");
+        return;
+    }
+
+    push((position_t){x, y});
     maze[y][x] = 0;
 
-    int order[4] = {0, 1, 2, 3};
-    shuffle(order, 4);
+    //Directions for DFS, move in 2 to leave walls
+    const int dirs[4][2] = {
+        { 0, -2}, { 0, 2},
+        {-2, 0}, { 2, 0}
+    };
 
-    for (int i = 0; i < 4; i++) {
-        int dx = dirs[order[i]][0];
-        int dy = dirs[order[i]][1];
-        int nx = x + dx;
-        int ny = y + dy;
+    while (!stack_empty()) {
+        position_t current = pop();
 
-        if (nx > 0 && nx < MAZE_WIDTH - 1 && ny > 0 && ny < MAZE_HEIGHT - 1 &&
-            maze[ny][nx] == 1) {
-            maze[y + dy / 2][x + dx / 2] = 0; // knock down wall
-            dfs_carve(nx, ny);
+        int order[4] = {0, 1, 2, 3};
+        shuffle(order, 4);
+
+        for (int i = 0; i < 4; i++) {
+            int dx = dirs[order[i]][0];
+            int dy = dirs[order[i]][1];
+            int nx = current.x + dx;
+            int ny = current.y + dy;
+
+            if (nx > 0 && nx < MAZE_WIDTH - 1 && ny > 0 && ny < MAZE_HEIGHT - 1 && maze[ny][nx] == 1) {
+                maze[ny][nx] = 0;
+                maze[current.y + dy/2][current.x + dx/2] = 0;
+                push(current);  //backtrack later
+                push((position_t){nx, ny});
+                break;
             }
+        }
     }
+    free(stack);
 }
 
 //Simulates a sensor checking its 4 walls around it,
 //if it is on the boundary return a 1, simulating a physical boundary
 void sensor_thread(void *a, void *b, void *c) {
+    k_sem_take(&maze_ready_sem, K_FOREVER);  // will block
+    k_sem_give(&maze_ready_sem);
     sensor_data_t sensors;
 
     while (1) {
@@ -213,6 +250,8 @@ float get_reward(position_t old_pos, position_t new_pos) {
 }
 
 void ai_thread(void *a, void *b, void *c) {
+    k_sem_take(&maze_ready_sem, K_FOREVER);  // will block
+    k_sem_give(&maze_ready_sem);
     sensor_data_t sensors;
     action_cmd_t cmd;
     position_t new_pos;
@@ -244,6 +283,8 @@ void ai_thread(void *a, void *b, void *c) {
 }
 
 void actuator_thread(void *a, void *b, void *c) {
+    k_sem_take(&maze_ready_sem, K_FOREVER);  // will block
+    k_sem_give(&maze_ready_sem);
     action_cmd_t cmd;
     while (1) {
         k_msgq_get(&action_queue, &cmd, K_FOREVER);
@@ -253,9 +294,15 @@ void actuator_thread(void *a, void *b, void *c) {
 
 int main(void)
 {
+    k_sem_init(&maze_ready_sem, 0, 1);
     memset(maze, 1, sizeof(maze));
     memset(q_table, 0, sizeof(q_table));
+
     dfs_carve(1,1);
+
+    k_sem_give(&maze_ready_sem);
+
     printk("Maze AI starting...\n");
+
     return 0;
 }
